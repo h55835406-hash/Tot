@@ -230,7 +230,6 @@ a{color:var(--accent-2);}
   font-size:11.5px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;
   animation:popIn .3s var(--ease);
 }
-/* Delete chat button on hover */
 .chat-item-del{
   width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center;
   color:var(--text-2); opacity:0; transition:opacity .2s var(--ease), background .2s var(--ease), color .2s var(--ease);
@@ -282,13 +281,11 @@ a{color:var(--accent-2);}
 .bubble .meta{display:flex; align-items:center; gap:4px; justify-content:flex-end; margin-top:3px; font-size:11px; opacity:.75;}
 .bubble .meta .icon{width:14px; height:14px;}
 .bubble .meta .icon.read{color:var(--accent-2);}
-/* deleted message style */
 .bubble.deleted-msg{
   opacity:.45; font-style:italic; background:var(--bg-2) !important;
   color:var(--text-2) !important; box-shadow:none;
 }
 .msg-row.out .bubble.deleted-msg{background:rgba(108,92,231,.15) !important;}
-/* Context menu */
 .ctx-menu{
   position:fixed; z-index:200; background:var(--bg-1); border:1px solid var(--line-strong);
   border-radius:var(--r-md); box-shadow:0 12px 32px -10px rgba(0,0,0,.45); min-width:190px;
@@ -426,7 +423,6 @@ a{color:var(--accent-2);}
 .confirm-dialog p{color:var(--text-1); font-size:14px; margin:0 0 22px; line-height:1.5;}
 .confirm-actions{display:flex; gap:10px;}
 .confirm-actions .btn{flex:1;}
-/* msg fade-out animation */
 .msg-row.removing{animation:msgRemove .25s var(--ease) forwards;}
 @keyframes msgRemove{to{opacity:0; transform:scaleY(0); max-height:0; margin:0; padding:0;}}
 @media (max-width:860px){
@@ -711,7 +707,6 @@ a{color:var(--accent-2);}
       </div>
     </div>
 
-    <!-- Confirm delete chat dialog -->
     <div class="overlay hidden" id="confirmDeleteChatOverlay">
       <div class="confirm-dialog">
         <h3>Удалить чат?</h3>
@@ -790,7 +785,6 @@ function runApp(){
   let lastSenderId = null;
   let presenceInterval = null;
 
-  // ── Context menu ──────────────────────────────────────────────────────────
   let activeCtxMenu = null;
 
   function closeCtxMenu(){
@@ -821,7 +815,6 @@ function runApp(){
     document.body.appendChild(menu);
     activeCtxMenu = menu;
 
-    // Position so it stays within viewport
     const rect = menu.getBoundingClientRect();
     const vw = window.innerWidth, vh = window.innerHeight;
     const mw = 200, mh = items.length * 46;
@@ -833,7 +826,6 @@ function runApp(){
     menu.style.top = fy + "px";
   }
 
-  // ── Toast ──────────────────────────────────────────────────────────────────
   function toast(message, type="info"){
     const box = $("#toastContainer");
     const el = document.createElement("div");
@@ -1174,7 +1166,6 @@ function runApp(){
     }
   });
 
-  // ── Delete chat ────────────────────────────────────────────────────────────
   $("#btnDeleteChat").addEventListener("click", () => {
     if (!currentChatId) return;
     openOverlay($("#confirmDeleteChatOverlay"));
@@ -1189,7 +1180,6 @@ function runApp(){
     try {
       await deleteChatFully(currentChatId);
       closeOverlay($("#confirmDeleteChatOverlay"));
-      // Return to chat list
       currentChatId = null;
       currentPartner = null;
       $("#shell").classList.remove("chat-active");
@@ -1204,7 +1194,6 @@ function runApp(){
   });
 
   async function deleteChatFully(chatId){
-    // Delete all messages in subcollection
     const msgsSnap = await getDocs(collection(db,"chats",chatId,"messages"));
     const BATCH_SIZE = 400;
     let batch = writeBatch(db);
@@ -1218,18 +1207,10 @@ function runApp(){
         count = 0;
       }
     }
-    // Delete chat doc itself
     batch.delete(doc(db,"chats",chatId));
     await batch.commit();
   }
 
-  // ── Delete message ─────────────────────────────────────────────────────────
-  /**
-   * Delete for me only: adds uid to deletedFor array on the message doc.
-   * The message will be hidden/shown as "Сообщение удалено" on this device.
-   *
-   * Delete for everyone: clears text/imageURL and sets deletedForAll=true.
-   */
   async function deleteMsgForAll(chatId, msgId, rowEl){
     try {
       await updateDoc(doc(db,"chats",chatId,"messages",msgId), {
@@ -1237,14 +1218,12 @@ function runApp(){
         imageURL: "",
         deletedForAll: true
       });
-      // rowEl will re-render via snapshot as deleted bubble
     } catch(err){
       console.error(err);
       toast("Не удалось удалить", "error");
     }
   }
 
-  // Use map field `deletedFor.{uid}: true` — works cleanly with Firestore dot notation
   async function deleteMsgForMeFixed(chatId, msgId, rowEl){
     try {
       await updateDoc(doc(db,"chats",chatId,"messages",msgId), {
@@ -1474,25 +1453,18 @@ function runApp(){
           </div>`;
         item.appendChild(body);
 
-        // Delete button for chat item
         const delBtn = document.createElement("button");
         delBtn.className = "chat-item-del";
         delBtn.title = "Удалить чат";
         delBtn.innerHTML = `<svg class="icon" style="width:16px;height:16px"><use href="#i-trash"/></svg>`;
         delBtn.addEventListener("click", (e) => {
           e.stopPropagation();
-          // Set as current for deletion context, then confirm
           const chatIdToDelete = d.id;
           const prevChatId = currentChatId;
-          // Temporarily store chat id to delete
           delBtn._chatIdToDelete = chatIdToDelete;
           openOverlay($("#confirmDeleteChatOverlay"));
-          // Override confirm action for this specific chat
           const originalChatId = currentChatId;
           currentChatId = chatIdToDelete;
-          const confirmBtn = $("#confirmDeleteChat");
-          const originalHandler = confirmBtn._handler;
-          // The confirmDeleteChat handler already uses currentChatId, so just set it
         });
         item.appendChild(delBtn);
 
@@ -1543,12 +1515,10 @@ function runApp(){
       snap.docChanges().forEach(change => {
         if (change.type === "added"){
           const data = change.doc.data();
-          // Skip messages deleted for me
           if (data.deletedFor && data.deletedFor[me.uid]) return;
           appendMessage(data, change.doc.id);
         }
         if (change.type === "modified"){
-          // Re-render modified message in place
           const data = change.doc.data();
           const existing = document.querySelector(`[data-msg-id="${change.doc.id}"]`);
           if (existing){
@@ -1565,7 +1535,6 @@ function runApp(){
     });
     unsubChatDoc = onSnapshot(doc(db,"chats",chatId), (snap) => {
       if (!snap.exists()) {
-        // Chat was deleted
         currentChatId = null;
         currentPartner = null;
         $("#shell").classList.remove("chat-active");
@@ -1644,7 +1613,6 @@ function runApp(){
   function appendMessage(msg, id){
     const container = $("#messagesContainer");
 
-    // Don't re-append if already exists
     if (document.querySelector(`[data-msg-id="${id}"]`)) return;
 
     const date = tsToDate(msg.createdAt);
@@ -1666,7 +1634,6 @@ function runApp(){
     bubble.className = "bubble";
 
     if (msg.deletedForAll){
-      // Render as deleted
       bubble.classList.add("deleted-msg");
       bubble.innerHTML = `<div style="display:flex;align-items:center;gap:6px"><svg style="width:14px;height:14px;opacity:.6;flex-shrink:0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4h6v3"/></svg>Сообщение удалено</div>`;
     } else {
@@ -1699,7 +1666,6 @@ function runApp(){
     row.appendChild(bubble);
     container.appendChild(row);
 
-    // Attach context menu (long press & right click) — skip for already-deleted messages
     if (!msg.deletedForAll){
       attachMsgContextMenu(row, bubble, id, msg, isOut);
     }
@@ -1727,13 +1693,11 @@ function runApp(){
       showCtxMenu(x, y, items);
     }
 
-    // Right click (desktop)
     bubble.addEventListener("contextmenu", (e) => {
       e.preventDefault();
       openMenu(e.clientX, e.clientY);
     });
 
-    // Long press (mobile)
     let longPressTimer = null;
     bubble.addEventListener("pointerdown", (e) => {
       longPressTimer = setTimeout(() => {
